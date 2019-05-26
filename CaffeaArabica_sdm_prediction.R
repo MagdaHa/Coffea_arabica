@@ -28,7 +28,7 @@
 
 ############################################################################################################
 #' Set working directory and load packages
-setwd("C:\\02_Studium\\02_Master\\02_Semester_2\\MET1_Spatial_modelling_and_prediction\\MET1_Modeling_Prediction\\caffea_arabica")
+setwd("C:\\02_Studium\\02_Master\\02_Semester_2\\MET1_Spatial_modelling_and_prediction\\caffea_arabica")
 
 library(rms) 
 library(raster)
@@ -80,7 +80,7 @@ plot(study_area)
 #' 
 #' getdata(climatevariable)
 
-bio <- raster::getData("worldclim", var = "bio", res = 10)
+bio <- raster::getData("worldclim", var = "bio", res = 2.5)
 
 #' Plot the first raster layer, i.e. annual mean temperature
 plot(raster(bio, 1))
@@ -99,18 +99,18 @@ plot(study_area, add=TRUE)
 #' Read occurrence points
 #' ==========================================
 
-  # Download species location data from gbif
-  # species <- gbif("Syncerus", "caffer", ext = extent(bio), sp = TRUE, removeZeros = TRUE)
-  species0 <- gbif('Coffea arabica L.')
-  species <- subset(species0,select=c("lat","lon"))
-  species <- na.omit(species)
-  coordinates(species) <- c("lon", "lat")  # set spatial coordinates
+# Download species location data from gbif
+# species <- gbif("Syncerus", "caffer", ext = extent(bio), sp = TRUE, removeZeros = TRUE)
+species0 <- gbif('Coffea arabica L.')
+species <- subset(species0,select=c("lat","lon"))
+species <- na.omit(species)
+coordinates(species) <- c("lon", "lat")  # set spatial coordinates
   
   
-  # Add projection information
-  proj4string(species) <- CRS("+proj=longlat +datum=WGS84")
-  # Save species records in mif-format (preserves full column names)
-  #writeOGR(species, "./GIS/Synceruscaffer", "Synceruscaffer", driver="MapInfo File", dataset_options="FORMAT=MIF")
+# Add projection information
+proj4string(species) <- CRS("+proj=longlat +datum=WGS84")
+# Save species records in mif-format (preserves full column names)
+#writeOGR(species, "./GIS/Synceruscaffer", "Synceruscaffer", driver="MapInfo File", dataset_options="FORMAT=MIF")
 
 plot(raster(biocrop, 1))
 plot(study_area, add=TRUE)
@@ -177,7 +177,7 @@ testdata <- fulldata[fold == 1, ]
 #' Unfortunately, there are often subtle differences in how the models
 #' are specified and in which data formats are useable
 
-varnames <- c("bio1", "bio4", "bio5", "bio12", "bio14", "bio15")  #TODO: SELECT ADEQUATE BIOs!! rename layer without _
+varnames <- c("bio1", "bio4", "bio5", "bio12", "bio14", "bio15")
 
 #' ==========================================
 #' GAM algorithm (Generalized additive models)
@@ -198,7 +198,7 @@ gamimp <- varImpBiomod(gammodel, varnames,
                        traindata)
 barplot(100 * gamimp/sum(gamimp), ylab = "Variable importance (%)")
 
-# Response functions
+# Response functions --> how good are the variables selected?
 plot(gammodel, pages = 1)
 
 # png("gammodel_resp.png", 800, 800)
@@ -296,23 +296,104 @@ rcp8_2080_crop <- crop(rcp8_2080, extent(study_area) + 3)
 names(rcp8_2080_crop) <- gsub("_", "", names(rcp8_2080_crop))
 plot(rcp8_2080_crop[[1]])
 plot(study_area, add=T)
- #---------------------------
+
+#-----------------------------------------
+# GAM model for future climate scenarios
+#-----------------------------------------
 #select subset of uncorrelated variables
 #use the previous calculates GAM model for future prediction
+
 env_rcp2_2050 <- subset(rcp2_2050_crop, c("bio1", "bio4", "bio5", "bio12", "bio14", "bio15"))
 gammap_rcp2_2050 <- predict(env_rcp2_2050, gammodel, type = "response")
+plot(gammap_rcp2_2050)
+plot(study_area, add=T)
+#writeRaster(class, filename = paste0(binary_out_folder, "/class_", date, ".tif"), format = "GTiff", overwrite = T)
 
 env_rcp2_2080 <- subset(rcp2_2080_crop, c("bio1", "bio4", "bio5", "bio12", "bio14", "bio15"))
 gammap_rcp2_2080 <- predict(env_rcp2_2080, gammodel, type = "response")
+plot(gammap_rcp2_2080)
+plot(study_area, add=T)
 
 env_rcp4_2050 <- subset(rcp4_2050_crop, c("bio1", "bio4", "bio5", "bio12", "bio14", "bio15"))
 gammap_rcp4_2050 <- predict(env_rcp4_2050, gammodel, type = "response")
+plot(gammap_rcp4_2050)
+plot(study_area, add=T)
 
 env_rcp4_2080 <- subset(rcp4_2080_crop, c("bio1", "bio4", "bio5", "bio12", "bio14", "bio15"))
 gammap_rcp4_2080 <- predict(env_rcp4_2080, gammodel, type = "response")
+plot(gammap_rcp4_2080)
+plot(study_area, add=T)
 
 env_rcp8_2050 <- subset(rcp8_2050_crop, c("bio1", "bio4", "bio5", "bio12", "bio14", "bio15"))
 gammap_rcp8_2050 <- predict(env_rcp8_2050, gammodel, type = "response")
+plot(gammap_rcp8_2050)
+plot(study_area, add=T)
 
 env_rcp8_2080 <- subset(rcp8_2080_crop, c("bio1", "bio4", "bio5", "bio12", "bio14", "bio15"))
-gammap_rcp8_2050 <- predict(env_rcp8_2080, gammodel, type = "response")
+gammap_rcp8_2080 <- predict(env_rcp8_2080, gammodel, type = "response")
+plot(gammap_rcp8_2080)
+plot(study_area, add=T)
+
+#-------------------------------------------------------------------------------------------
+#creating binary map with treshold 0.7 -> 70% probability of growing caffea arabica
+class_out_folder <- "C:\\02_Studium\\02_Master\\02_Semester_2\\MET1_Spatial_modelling_and_prediction\\Caffea_arabica\\shapes"
+binaryMap <- function(raster, threshold) {
+  bin <- raster
+  bin[raster <= threshold] <- 0
+  bin[raster > threshold] <- 1
+  return(bin)
+}
+
+threshold <- 0.7
+
+ras <- brick(gammap)
+class_current <- binaryMap(ras, threshold)
+proj4string(class_current) <- CRS("+proj=longlat +datum=WGS84")
+plot(class_current)
+plot(study_area, add=T)
+writeRaster(class_current, filename = "class_current", format = "GTiff", overwrite = T)
+
+ras <- brick(gammap_rcp2_2050)
+class_rcp2_2050 <- binaryMap(ras, threshold)
+proj4string(class_rcp2_2050) <- CRS("+proj=longlat +datum=WGS84")
+plot(class_rcp2_2050)
+plot(study_area, add=T)
+writeRaster(class_rcp2_2050, filename = "class_rcp2_2050", format = "GTiff", overwrite = T)
+
+ras <- brick(gammap_rcp2_2080)
+class_rcp2_2080 <- binaryMap(ras, threshold)
+proj4string(class_rcp2_2080) <- CRS("+proj=longlat +datum=WGS84")
+plot(class_rcp2_2080)
+writeRaster(class_rcp2_2080, filename = "class_rcp2_2080", format = "GTiff", overwrite = T)
+
+
+ras <- brick(gammap_rcp4_2050)
+class_rcp4_2050 <- binaryMap(ras, threshold)
+proj4string(class_rcp4_2050) <- CRS("+proj=longlat +datum=WGS84")
+plot(class_rcp4_2050)
+writeRaster(class_rcp4_2050, filename = "class_rcp4_2050", format = "GTiff", overwrite = T)
+
+
+ras <- brick(gammap_rcp4_2080)
+class_rcp4_2080 <- binaryMap(ras, threshold)
+proj4string(class_rcp4_2080) <- CRS("+proj=longlat +datum=WGS84")
+plot(class_rcp4_2080)
+writeRaster(class_rcp4_2080, filename = "class_rcp4_2080", format = "GTiff", overwrite = T)
+
+
+ras <- brick(gammap_rcp8_2050)
+class_rcp8_2050 <- binaryMap(ras, threshold)
+proj4string(class_rcp8_2050) <- CRS("+proj=longlat +datum=WGS84")
+plot(class_rcp8_2050)
+writeRaster(class_rcp8_2050, filename = "class_rcp8_2050", format = "GTiff", overwrite = T)
+
+
+ras <- brick(gammap_rcp8_2080)
+class_rcp8_2080 <- binaryMap(ras, threshold)
+proj4string(class_rcp8_2080) <- CRS("+proj=longlat +datum=WGS84")
+plot(class_rcp8_2080)
+writeRaster(class_rcp8_2080, filename = "class_rcp8_2080", format = "GTiff", overwrite = T)
+
+
+# TODO: save as .shp
+#       doku where and how to download bioclim data step by step
