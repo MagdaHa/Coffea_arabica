@@ -30,7 +30,8 @@
 #' Set working directory and load packages
 setwd("C:\\02_Studium\\02_Master\\02_Semester_2\\MET1_Spatial_modelling_and_prediction\\caffea_arabica")
 
-library(rms) 
+library(rms)
+#install.packages("raster")
 library(raster)
 library(mgcv) # gam
 #' We assume that the file "varImpBiomod.R" is in the working directory
@@ -42,6 +43,7 @@ library(ellipse)
 library(randomForest)
 library(rJava)
 library(XML)
+library(sp)
 
 #################################################################################################################
 #' Import data: Environment and species occurrences
@@ -88,7 +90,7 @@ plot(raster(bio, 1))
 plot(study_area, add=TRUE)
 
 #' Crop to study area extent (with a 3 degree buffer in each direction)
-biocrop <- crop(bio, extent(study_area) + 3)
+biocrop <- crop(bio, extent(study_area) +3)
 
 #' Plot the first raster layer of the cropped climate data
 plot(raster(biocrop, 7))
@@ -132,7 +134,8 @@ cm <- cor(getValues(bio), use = "complete.obs")
 plotcorr(cm, col=ifelse(abs(cm) > 0.7, "red", "grey"))
 
 #' ### Select an uncorrelated subset of environmental variables ###
-env <- subset(biocrop, c("bio1", "bio4", "bio5", "bio12", "bio14", "bio15"))
+env <- subset(biocrop, c("bio3", "bio5", "bio6", "bio12", "bio18"))
+#env <- subset(biocrop, c("bio1", "bio4", "bio5", "bio12", "bio14", "bio15")) #selfdefined
 
 ############################################################################################################
 #' ==========================================
@@ -177,13 +180,17 @@ testdata <- fulldata[fold == 1, ]
 #' Unfortunately, there are often subtle differences in how the models
 #' are specified and in which data formats are useable
 
-varnames <- c("bio1", "bio4", "bio5", "bio12", "bio14", "bio15")
+varnames <- c("bio3", "bio5", "bio6", "bio12", "bio18")  #paper
+#varnames <- c("bio1", "bio4", "bio5", "bio12", "bio14", "bio15") #selfdenied
+
 
 #' ==========================================
 #' GAM algorithm (Generalized additive models)
 #' ==========================================
-gammodel <- gam(species ~ s(bio1) + s(bio4) + s(bio5) + s(bio12) + s(bio14) + s(bio15),
+gammodel <- gam(species ~ s(bio3) + s(bio5) + s(bio6) + s(bio12) + s(bio18),
                 family="binomial", data=traindata)
+#gammodel <- gam(species ~ s(bio1) + s(bio4) + s(bio5) + s(bio12) + s(bio14) + s(bio15),
+                #family="binomial", data=traindata)  #selfdefined
 summary(gammodel)
 
 plot(gammodel)
@@ -303,40 +310,40 @@ plot(study_area, add=T)
 #select subset of uncorrelated variables
 #use the previous calculates GAM model for future prediction
 
-env_rcp2_2050 <- subset(rcp2_2050_crop, c("bio1", "bio4", "bio5", "bio12", "bio14", "bio15"))
+env_rcp2_2050 <- subset(rcp2_2050_crop, c("bio3", "bio5", "bio6", "bio12", "bio18"))#c("bio1", "bio4", "bio5", "bio12", "bio14", "bio15"))
 gammap_rcp2_2050 <- predict(env_rcp2_2050, gammodel, type = "response")
 plot(gammap_rcp2_2050)
 plot(study_area, add=T)
 #writeRaster(class, filename = paste0(binary_out_folder, "/class_", date, ".tif"), format = "GTiff", overwrite = T)
 
-env_rcp2_2080 <- subset(rcp2_2080_crop, c("bio1", "bio4", "bio5", "bio12", "bio14", "bio15"))
+env_rcp2_2080 <- subset(rcp2_2080_crop, c("bio3", "bio5", "bio6", "bio12", "bio18"))
 gammap_rcp2_2080 <- predict(env_rcp2_2080, gammodel, type = "response")
 plot(gammap_rcp2_2080)
 plot(study_area, add=T)
 
-env_rcp4_2050 <- subset(rcp4_2050_crop, c("bio1", "bio4", "bio5", "bio12", "bio14", "bio15"))
+env_rcp4_2050 <- subset(rcp4_2050_crop, c("bio3", "bio5", "bio6", "bio12", "bio18"))
 gammap_rcp4_2050 <- predict(env_rcp4_2050, gammodel, type = "response")
 plot(gammap_rcp4_2050)
 plot(study_area, add=T)
 
-env_rcp4_2080 <- subset(rcp4_2080_crop, c("bio1", "bio4", "bio5", "bio12", "bio14", "bio15"))
+env_rcp4_2080 <- subset(rcp4_2080_crop, c("bio3", "bio5", "bio6", "bio12", "bio18"))
 gammap_rcp4_2080 <- predict(env_rcp4_2080, gammodel, type = "response")
 plot(gammap_rcp4_2080)
 plot(study_area, add=T)
 
-env_rcp8_2050 <- subset(rcp8_2050_crop, c("bio1", "bio4", "bio5", "bio12", "bio14", "bio15"))
+env_rcp8_2050 <- subset(rcp8_2050_crop, c("bio3", "bio5", "bio6", "bio12", "bio18"))
 gammap_rcp8_2050 <- predict(env_rcp8_2050, gammodel, type = "response")
 plot(gammap_rcp8_2050)
 plot(study_area, add=T)
 
-env_rcp8_2080 <- subset(rcp8_2080_crop, c("bio1", "bio4", "bio5", "bio12", "bio14", "bio15"))
+env_rcp8_2080 <- subset(rcp8_2080_crop, c("bio3", "bio5", "bio6", "bio12", "bio18"))
 gammap_rcp8_2080 <- predict(env_rcp8_2080, gammodel, type = "response")
 plot(gammap_rcp8_2080)
 plot(study_area, add=T)
 
 #-------------------------------------------------------------------------------------------
 #creating binary map with treshold 0.7 -> 70% probability of growing caffea arabica
-class_out_folder <- "C:\\02_Studium\\02_Master\\02_Semester_2\\MET1_Spatial_modelling_and_prediction\\Caffea_arabica\\shapes"
+class_out_folder <- "C:\\02_Studium\\02_Master\\02_Semester_2\\MET1_Spatial_modelling_and_prediction\\Caffea_arabica\\data\\ggRGB"
 binaryMap <- function(raster, threshold) {
   bin <- raster
   bin[raster <= threshold] <- 0
@@ -346,54 +353,173 @@ binaryMap <- function(raster, threshold) {
 
 threshold <- 0.7
 
+#binary map
 ras <- brick(gammap)
 class_current <- binaryMap(ras, threshold)
 proj4string(class_current) <- CRS("+proj=longlat +datum=WGS84")
+class_current <- raster::resample(class_current, class_rcp2_2050)
+class_current <- raster::mask(class_current, study_area)
 plot(class_current)
 plot(study_area, add=T)
 writeRaster(class_current, filename = "class_current", format = "GTiff", overwrite = T)
+#raster to polygon
+pol_class_current <- rasterToPolygons(class_current, dissolve = T)
+plot(pol_class_current)
+writeOGR(pol_class_current, ".", "pol_class_current", driver="ESRI Shapefile")
 
 ras <- brick(gammap_rcp2_2050)
 class_rcp2_2050 <- binaryMap(ras, threshold)
 proj4string(class_rcp2_2050) <- CRS("+proj=longlat +datum=WGS84")
+class_rcp2_2050 <- raster::mask(class_rcp2_2050, study_area)
 plot(class_rcp2_2050)
 plot(study_area, add=T)
 writeRaster(class_rcp2_2050, filename = "class_rcp2_2050", format = "GTiff", overwrite = T)
+pol_class_rcp2_2050 <- rasterToPolygons(class_rcp2_2050, dissolve = T)
+plot(pol_class_rcp2_2050)
+writeOGR(pol_class_rcp2_2050, ".", "pol_class_rcp2_2050", driver="ESRI Shapefile")
+
 
 ras <- brick(gammap_rcp2_2080)
 class_rcp2_2080 <- binaryMap(ras, threshold)
 proj4string(class_rcp2_2080) <- CRS("+proj=longlat +datum=WGS84")
+class_rcp2_2080 <- raster::mask(class_rcp2_2080, study_area)
 plot(class_rcp2_2080)
+plot(study_area, add=T)
 writeRaster(class_rcp2_2080, filename = "class_rcp2_2080", format = "GTiff", overwrite = T)
+pol_class_rcp2_2080 <- rasterToPolygons(class_rcp2_2080, dissolve = T)
+plot(pol_class_rcp2_2080)
+writeOGR(pol_class_rcp2_2080, ".", "pol_class_rcp2_2080", driver="ESRI Shapefile")
 
 
 ras <- brick(gammap_rcp4_2050)
 class_rcp4_2050 <- binaryMap(ras, threshold)
 proj4string(class_rcp4_2050) <- CRS("+proj=longlat +datum=WGS84")
+class_rcp4_2050 <- raster::mask(class_rcp4_2050, study_area)
 plot(class_rcp4_2050)
+plot(study_area, add=T)
 writeRaster(class_rcp4_2050, filename = "class_rcp4_2050", format = "GTiff", overwrite = T)
+pol_class_rcp4_2050 <- rasterToPolygons(class_rcp4_2050, dissolve = T)
+plot(pol_class_rcp4_2050)
+writeOGR(pol_class_rcp4_2050, ".", "pol_class_rcp4_2050", driver="ESRI Shapefile")
 
 
 ras <- brick(gammap_rcp4_2080)
 class_rcp4_2080 <- binaryMap(ras, threshold)
 proj4string(class_rcp4_2080) <- CRS("+proj=longlat +datum=WGS84")
+class_rcp4_2080 <- raster::mask(class_rcp4_2080, study_area)
 plot(class_rcp4_2080)
+plot(study_area, add=T)
 writeRaster(class_rcp4_2080, filename = "class_rcp4_2080", format = "GTiff", overwrite = T)
+pol_class_rcp4_2080 <- rasterToPolygons(class_rcp4_2080, dissolve = T)
+plot(pol_class_rcp4_2080)
+writeOGR(pol_class_rcp4_2080, ".", "pol_class_rcp4_2080", driver="ESRI Shapefile")
 
 
 ras <- brick(gammap_rcp8_2050)
 class_rcp8_2050 <- binaryMap(ras, threshold)
 proj4string(class_rcp8_2050) <- CRS("+proj=longlat +datum=WGS84")
+class_rcp8_2050 <- raster::mask(class_rcp8_2050, study_area)
 plot(class_rcp8_2050)
+plot(study_area, add=T)
 writeRaster(class_rcp8_2050, filename = "class_rcp8_2050", format = "GTiff", overwrite = T)
+pol_class_rcp8_2050 <- rasterToPolygons(class_rcp8_2050, dissolve = T)
+plot(pol_class_rcp8_2050)
+writeOGR(pol_class_rcp8_2050, ".", "pol_class_rcp8_2050", driver="ESRI Shapefile")
 
 
 ras <- brick(gammap_rcp8_2080)
 class_rcp8_2080 <- binaryMap(ras, threshold)
 proj4string(class_rcp8_2080) <- CRS("+proj=longlat +datum=WGS84")
+class_rcp8_2080 <- raster::mask(class_rcp8_2080, study_area)
 plot(class_rcp8_2080)
+plot(study_area, add=T)
 writeRaster(class_rcp8_2080, filename = "class_rcp8_2080", format = "GTiff", overwrite = T)
+pol_class_rcp8_2080 <- rasterToPolygons(class_rcp8_2080, dissolve = T)
+plot(pol_class_rcp8_2080)
+writeOGR(pol_class_rcp8_2080, ".", "pol_class_rcp8_2080", driver="ESRI Shapefile")
+
+#----------------------------------------------------
+#calculate area of binary results
+
+calc_area <- function(raster, res_x, res_y){
+  #define default value for res_x and res_y
+  if (missing(res_x) & missing(res_y)){
+    res_x <- 0.92
+    res_y <- 0.92
+  }
+  vals <- getValues(raster)
+  cells <- sum(vals ==1, na.rm = T)
+  area <-  sum(vals ==1, na.rm = T) * res_x * res_y
+  return(area)
+}
+
+area_current <- calc_area(class_current)  #pixel 4.6km
+area_rcp2_2050 <- calc_area(class_rcp2_2050)  #pixel 0.92km
+area_rcp2_2080 <- calc_area(class_rcp2_2080)
+area_rcp4_2050 <- calc_area(class_rcp4_2050)
+area_rcp4_2080 <- calc_area(class_rcp4_2080)
+area_rcp8_2050 <- calc_area(class_rcp8_2050)
+area_rcp8_2080 <- calc_area(class_rcp8_2080)
+  
+  
+#------------------------------------------------
+# Plot per each scenario
+library(RStoolbox)
+
+#stack_rcp2 <- as.list(class_current, class_rcp2_2050, class_rcp2_2080)
+rcp2_list <- list.files(path="C:\\02_Studium\\02_Master\\02_Semester_2\\MET1_Spatial_modelling_and_prediction\\Caffea_arabica\\data\\ggRGB\\class_rcp2", full.names = T)
+#stack_rcp2 <- raster::stack(system.file(path="C:\\02_Studium\\02_Master\\02_Semester_2\\MET1_Spatial_modelling_and_prediction\\Caffea_arabica\\data\\ggRGB\\class_rcp2"))
+stack_rcp2 <- raster::stack(rcp2_list)
+#stack_rcp2 <- raster::stack(class_current, class_rcp2_2050, class_rcp2_2080)
+plot_rcp2 <- ggRGB(stack_rcp2, r = 3, g = 2, b = 1)
+
+  
+#-------------------------------------------------
+#elevation data
+setwd("D:\\01_Uni\\02_Master\\MET1_Modeling_Prediction")
+#install.packages("elevatr")
+library(elevatr)
+data(study_area)
+elevation <- get_elev_raster(gammap, z = 9)
+plot(elevation)
 
 
-# TODO: save as .shp
+srtm <- raster::getData('SRTM', lon=8, lat=39)
+plot(srtm)
+plot(study_area, add=T)
+
+
+require(devtools)
+install.packages("rjson")
+install_github("ropensci/geonames")
+library(rjson)
+library(geonames)
+topo30 <- GNgtopo30(lat=39,lng=8)
+
+
+
+
+
+
+
+# TODO: 
+#       calculate area of binary results
+#       elevation miteinbeziehen (corrplot höhe-wahrscheinlichkeit occurence) > Höhenlinine auch plotten https://plot.ly/r/contour-plots/
+#       https://cran.r-project.org/web/packages/elevatr/vignettes/introduction_to_elevatr.html
+#       https://gis.stackexchange.com/questions/293993/plotting-and-analyzing-extracted-elevation-data-in-r
+#       https://earthdata.nasa.gov/: srtm, topo30 gtopo 1km, aspect slope, resample
+#       https://www.rdocumentation.org/packages/geonames/versions/0.999/topics/GNgtopo30
+#       gdal merge
+
 #       doku where and how to download bioclim data step by step
+#       Korrelation mit Kaffeekirschenkäfer? Osttimor
+
+#       andere bios nehmen? --> paper
+#       crop all to extent!
+
+
+#https://search.earthdata.nasa.gov/data/retrieve/0375455176
+
+
+
+
