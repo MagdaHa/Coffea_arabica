@@ -82,10 +82,13 @@ plot(study_area)
 #' BIO18 | Precipitation of Warmest Quarter
 #' BIO19 | Precipitation of Coldest Quarter
 #' 
+#' BIO20 | Digital elevation model
+#' BIO21 | Slope
 #' getdata(climatevariable)
 
-bio <- raster::getData("worldclim", var = "bio", res = 2.5)
-
+bio <- raster::getData("worldclim", var = "bio", res = 2.5)                           #climate data from Bioclim
+gtopo30 <- raster("D:\\01_Uni\\02_Master\\MET1_Modeling_Prediction\\gt30e020n40.tif") #elevation data from USGS Earth Explorer
+names(gtopo30) <- gsub("gt30e020n40","bio20", names(gtopo30))
 
 #' Plot the first raster layer, i.e. annual mean temperature
 plot(raster(bio, 1))
@@ -94,9 +97,24 @@ plot(study_area, add=TRUE)
 
 #' Crop to study area extent (with a 3 degree buffer in each direction)
 biocrop <- crop(bio, extent(study_area) +3)
+gtopo30_crop <- crop(gtopo30, extent(study_area) +3)
 
-#' Plot the first raster layer of the cropped climate data
-plot(raster(biocrop, 7))
+#' resample gtopo dataset to pixelsize of bioclilm data
+gtopo30_res <- raster::resample(gtopo30_crop, biocrop)
+
+#' calculate slope out of gtopo30 data
+slope_out_folder <- "D:\\01_Uni\\02_Master\\MET1_Modeling_Prediction"
+slope <- terrain(gtopo30_res, opt='slope', unit='degrees', neighbors=8, filename = paste0(slope_out_folder, "/slope.tif"))
+
+#' assign same coordinate system
+proj4string(biocrop) <- CRS("+proj=longlat +datum=WGS84")
+proj4string(gtopo30_res) <- CRS("+proj=longlat +datum=WGS84")
+
+#' stack datasets together
+biocrop <- stack(biocrop, gtopo30_res)
+
+#' Plot the first raster layer of the cropped and stacked climate data
+plot(raster(biocrop, 20))
 plot(study_area, add=TRUE)
 
 ###########################################################################################################
@@ -116,7 +134,7 @@ proj4string(species) <- CRS("+proj=longlat +datum=WGS84")
 # Save species records in mif-format (preserves full column names)
 #writeOGR(species, "./GIS/Synceruscaffer", "Synceruscaffer", driver="MapInfo File", dataset_options="FORMAT=MIF")
 
-plot(raster(biocrop, 1))
+plot(raster(biocrop, 20))
 plot(study_area, add=TRUE)
 plot(species, add = TRUE)
 
@@ -136,7 +154,7 @@ cm <- cor(getValues(bio), use = "complete.obs")
 plotcorr(cm, col=ifelse(abs(cm) > 0.7, "red", "grey"))
 
 #' ### Select an uncorrelated subset of environmental variables ###
-env <- subset(biocrop, c("bio3", "bio5", "bio6", "bio12", "bio18"))
+env <- subset(biocrop, c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20"))
 
 ############################################################################################################
 #' ==========================================
@@ -181,12 +199,12 @@ testdata <- fulldata[fold == 1, ]
 #' Unfortunately, there are often subtle differences in how the models
 #' are specified and in which data formats are useable
 
-varnames <- c("bio3", "bio5", "bio6", "bio12", "bio18")
+varnames <- c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20")
 
 #' ==========================================
 #' GAM algorithm (Generalized additive models)
 #' ==========================================
-gammodel <- gam(species ~ s(bio3) + s(bio5) + s(bio6) + s(bio12) + s(bio18),
+gammodel <- gam(species ~ s(bio3) + s(bio5) + s(bio6) + s(bio12) + s(bio18) + s(bio20),
                 family="binomial", data=traindata)
 summary(gammodel)
 
@@ -253,8 +271,19 @@ names(rcp4_2080_crop) <- gsub("_", "", names(rcp4_2080_crop))
 names(rcp8_2050_crop) <- gsub("_", "", names(rcp8_2050_crop))
 names(rcp8_2080_crop) <- gsub("_", "", names(rcp8_2080_crop))
 
-#plot RCP scenarios (BIO1)
-plot(rcp2_2050_crop[[1]])
+#resample gtopo dataset to pixelsize of RCP data
+gtopo30_res_rcp <- raster::resample(gtopo30_crop, rcp2_2050_crop)
+
+#stack scenarios togehter with elevatin data (gtopo30)
+rcp2_2050_crop <- stack(rcp2_2050_crop, gtopo30_res_rcp)
+rcp2_2080_crop <- stack(rcp2_2080_crop, gtopo30_res_rcp)
+rcp4_2050_crop <- stack(rcp4_2050_crop, gtopo30_res_rcp)
+rcp4_2080_crop <- stack(rcp4_2080_crop, gtopo30_res_rcp)
+rcp8_2050_crop <- stack(rcp8_2050_crop, gtopo30_res_rcp)
+rcp8_2080_crop <- stack(rcp8_2080_crop, gtopo30_res_rcp)
+
+#plot RCP scenarios (BIO20)
+plot(rcp2_2050_crop[[20]])
 plot(study_area, add=T)
 
 
@@ -268,12 +297,12 @@ plot(study_area, add=T)
 gammap_out_folder <- "D:\\01_Uni\\02_Master\\MET1_Modeling_Prediction\\data\\gammap"
 
 #select subset of uncorrelated variables
-env_rcp2_2050 <- subset(rcp2_2050_crop, c("bio3", "bio5", "bio6", "bio12", "bio18"))
-env_rcp2_2080 <- subset(rcp2_2080_crop, c("bio3", "bio5", "bio6", "bio12", "bio18"))
-env_rcp4_2050 <- subset(rcp4_2050_crop, c("bio3", "bio5", "bio6", "bio12", "bio18"))
-env_rcp4_2080 <- subset(rcp4_2080_crop, c("bio3", "bio5", "bio6", "bio12", "bio18"))
-env_rcp8_2050 <- subset(rcp8_2050_crop, c("bio3", "bio5", "bio6", "bio12", "bio18"))
-env_rcp8_2080 <- subset(rcp8_2080_crop, c("bio3", "bio5", "bio6", "bio12", "bio18"))
+env_rcp2_2050 <- subset(rcp2_2050_crop, c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20"))
+env_rcp2_2080 <- subset(rcp2_2080_crop, c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20"))
+env_rcp4_2050 <- subset(rcp4_2050_crop, c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20"))
+env_rcp4_2080 <- subset(rcp4_2080_crop, c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20"))
+env_rcp8_2050 <- subset(rcp8_2050_crop, c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20"))
+env_rcp8_2080 <- subset(rcp8_2080_crop, c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20"))
 
 #use the previous calculates GAM model for future prediction
 gammap_rcp2_2050 <- predict(env_rcp2_2050, gammodel, type = "response")
@@ -284,7 +313,7 @@ gammap_rcp8_2050 <- predict(env_rcp8_2050, gammodel, type = "response")
 gammap_rcp8_2080 <- predict(env_rcp8_2080, gammodel, type = "response")
 
 #plot model results
-plot(gammap_rcp2_2050)
+plot(gammap_rcp4_2050)
 plot(study_area, add=T)
 
 #resample/mask current climate to pixel size of future scenarios (!!)
