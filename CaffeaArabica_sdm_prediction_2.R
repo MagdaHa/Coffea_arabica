@@ -84,6 +84,7 @@ plot(study_area)
 #' 
 #' BIO20 | Digital elevation model
 #' BIO21 | Slope
+#' 
 #' getdata(climatevariable)
 
 bio <- raster::getData("worldclim", var = "bio", res = 2.5)                           #climate data from Bioclim
@@ -99,22 +100,25 @@ plot(study_area, add=TRUE)
 biocrop <- crop(bio, extent(study_area) +3)
 gtopo30_crop <- crop(gtopo30, extent(study_area) +3)
 
-#' resample gtopo dataset to pixelsize of bioclilm data
-gtopo30_res <- raster::resample(gtopo30_crop, biocrop)
-
 #' calculate slope out of gtopo30 data
 slope_out_folder <- "D:\\01_Uni\\02_Master\\MET1_Modeling_Prediction"
-slope <- terrain(gtopo30_res, opt='slope', unit='degrees', neighbors=8, filename = paste0(slope_out_folder, "/slope.tif"))
+slope <- terrain(gtopo30_crop, opt='slope', unit='degrees', neighbors=8, filename = paste0(slope_out_folder, "/slope.tif"), overwrite=T)
+names(slope) <- gsub("slope","bio21", names(slope))
+
+#' resample gtopo and slope dataset to pixelsize of bioclim data
+gtopo30_res <- raster::resample(gtopo30_crop, biocrop)
+slope_res <- raster::resample(slope, biocrop)
 
 #' assign same coordinate system
 proj4string(biocrop) <- CRS("+proj=longlat +datum=WGS84")
 proj4string(gtopo30_res) <- CRS("+proj=longlat +datum=WGS84")
+proj4string(slope_res) <- CRS("+proj=longlat +datum=WGS84")
 
 #' stack datasets together
-biocrop <- stack(biocrop, gtopo30_res)
+biocrop <- stack(biocrop, gtopo30_res, slope_res)
 
 #' Plot the first raster layer of the cropped and stacked climate data
-plot(raster(biocrop, 20))
+plot(raster(biocrop, 21))
 plot(study_area, add=TRUE)
 
 ###########################################################################################################
@@ -154,7 +158,7 @@ cm <- cor(getValues(bio), use = "complete.obs")
 plotcorr(cm, col=ifelse(abs(cm) > 0.7, "red", "grey"))
 
 #' ### Select an uncorrelated subset of environmental variables ###
-env <- subset(biocrop, c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20"))
+env <- subset(biocrop, c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20", "bio21"))
 
 ############################################################################################################
 #' ==========================================
@@ -199,12 +203,12 @@ testdata <- fulldata[fold == 1, ]
 #' Unfortunately, there are often subtle differences in how the models
 #' are specified and in which data formats are useable
 
-varnames <- c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20")
+varnames <- c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20", "bio21")
 
 #' ==========================================
 #' GAM algorithm (Generalized additive models)
 #' ==========================================
-gammodel <- gam(species ~ s(bio3) + s(bio5) + s(bio6) + s(bio12) + s(bio18) + s(bio20),
+gammodel <- gam(species ~ s(bio3) + s(bio5) + s(bio6) + s(bio12) + s(bio18) + s(bio20) + s(bio21),
                 family="binomial", data=traindata)
 summary(gammodel)
 
@@ -271,19 +275,20 @@ names(rcp4_2080_crop) <- gsub("_", "", names(rcp4_2080_crop))
 names(rcp8_2050_crop) <- gsub("_", "", names(rcp8_2050_crop))
 names(rcp8_2080_crop) <- gsub("_", "", names(rcp8_2080_crop))
 
-#resample gtopo dataset to pixelsize of RCP data
+#resample gtopo and slope dataset to pixelsize of RCP data
 gtopo30_res_rcp <- raster::resample(gtopo30_crop, rcp2_2050_crop)
+slope_res_rcp <- raster::resample(slope_res, rcp2_2050_crop)
 
 #stack scenarios togehter with elevatin data (gtopo30)
-rcp2_2050_crop <- stack(rcp2_2050_crop, gtopo30_res_rcp)
-rcp2_2080_crop <- stack(rcp2_2080_crop, gtopo30_res_rcp)
-rcp4_2050_crop <- stack(rcp4_2050_crop, gtopo30_res_rcp)
-rcp4_2080_crop <- stack(rcp4_2080_crop, gtopo30_res_rcp)
-rcp8_2050_crop <- stack(rcp8_2050_crop, gtopo30_res_rcp)
-rcp8_2080_crop <- stack(rcp8_2080_crop, gtopo30_res_rcp)
+rcp2_2050_crop <- stack(rcp2_2050_crop, gtopo30_res_rcp, slope_res_rcp)
+rcp2_2080_crop <- stack(rcp2_2080_crop, gtopo30_res_rcp, slope_res_rcp)
+rcp4_2050_crop <- stack(rcp4_2050_crop, gtopo30_res_rcp, slope_res_rcp)
+rcp4_2080_crop <- stack(rcp4_2080_crop, gtopo30_res_rcp, slope_res_rcp)
+rcp8_2050_crop <- stack(rcp8_2050_crop, gtopo30_res_rcp, slope_res_rcp)
+rcp8_2080_crop <- stack(rcp8_2080_crop, gtopo30_res_rcp, slope_res_rcp)
 
-#plot RCP scenarios (BIO20)
-plot(rcp2_2050_crop[[20]])
+#plot RCP scenarios (BIO21)
+plot(rcp2_2050_crop[[21]])
 plot(study_area, add=T)
 
 
@@ -297,12 +302,12 @@ plot(study_area, add=T)
 gammap_out_folder <- "D:\\01_Uni\\02_Master\\MET1_Modeling_Prediction\\data\\gammap"
 
 #select subset of uncorrelated variables
-env_rcp2_2050 <- subset(rcp2_2050_crop, c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20"))
-env_rcp2_2080 <- subset(rcp2_2080_crop, c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20"))
-env_rcp4_2050 <- subset(rcp4_2050_crop, c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20"))
-env_rcp4_2080 <- subset(rcp4_2080_crop, c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20"))
-env_rcp8_2050 <- subset(rcp8_2050_crop, c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20"))
-env_rcp8_2080 <- subset(rcp8_2080_crop, c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20"))
+env_rcp2_2050 <- subset(rcp2_2050_crop, c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20", "bio21"))
+env_rcp2_2080 <- subset(rcp2_2080_crop, c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20", "bio21"))
+env_rcp4_2050 <- subset(rcp4_2050_crop, c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20", "bio21"))
+env_rcp4_2080 <- subset(rcp4_2080_crop, c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20", "bio21"))
+env_rcp8_2050 <- subset(rcp8_2050_crop, c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20", "bio21"))
+env_rcp8_2080 <- subset(rcp8_2080_crop, c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20", "bio21"))
 
 #use the previous calculates GAM model for future prediction
 gammap_rcp2_2050 <- predict(env_rcp2_2050, gammodel, type = "response")
@@ -334,6 +339,14 @@ gam_rcp8_stack <- raster::mask(gam_rcp8_stack, study_area)
 
 #write gammaps scenarios (stacked)
 writeRaster(gammap_mask, filename = paste0(gammap_out_folder, "/model_current.tif"), options="INTERLEAVE=BAND", overwrite=T)
+
+writeRaster(gammap_rcp2_2050, filename = paste0(gammap_out_folder, "/gam_rcp2_2050.tif"), options="INTERLEAVE=BAND", overwrite=T)
+writeRaster(gammap_rcp2_2080, filename = paste0(gammap_out_folder, "/gam_rcp2_2080.tif"), options="INTERLEAVE=BAND", overwrite=T)
+writeRaster(gammap_rcp4_2050, filename = paste0(gammap_out_folder, "/gam_rcp4_2050.tif"), options="INTERLEAVE=BAND", overwrite=T)
+writeRaster(gammap_rcp4_2080, filename = paste0(gammap_out_folder, "/gam_rcp4_2080.tif"), options="INTERLEAVE=BAND", overwrite=T)
+writeRaster(gammap_rcp8_2050, filename = paste0(gammap_out_folder, "/gam_rcp8_2050.tif"), options="INTERLEAVE=BAND", overwrite=T)
+writeRaster(gammap_rcp8_2080, filename = paste0(gammap_out_folder, "/gam_rcp8_2080.tif"), options="INTERLEAVE=BAND", overwrite=T)
+
 writeRaster(gam_rcp2_stack, filename = paste0(gammap_out_folder, "/RGB_RCP2_full.tif"), options="INTERLEAVE=BAND", overwrite=T)
 writeRaster(gam_rcp4_stack, filename = paste0(gammap_out_folder, "/RGB_RCP4_full.tif"), options="INTERLEAVE=BAND", overwrite=T)
 writeRaster(gam_rcp8_stack, filename = paste0(gammap_out_folder, "/RGB_RCP8_full.tif"), options="INTERLEAVE=BAND", overwrite=T)
