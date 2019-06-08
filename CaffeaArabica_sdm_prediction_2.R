@@ -299,7 +299,8 @@ plot(study_area, add=T)
 #' GAM algorithm for future climate scenarios
 #' ==========================================
 #' 
-gammap_out_folder <- "D:\\01_Uni\\02_Master\\MET1_Modeling_Prediction\\data\\gammap"
+gammap_out_folder <- "D:\\01_Uni\\02_Master\\MET1_Modeling_Prediction\\data\\gam"
+RGB_out_folder <- "D:\\01_Uni\\02_Master\\MET1_Modeling_Prediction\\data\\RGB_stack"
 
 #select subset of uncorrelated variables
 env_rcp2_2050 <- subset(rcp2_2050_crop, c("bio3", "bio5", "bio6", "bio12", "bio18", "bio20", "bio21"))
@@ -316,6 +317,15 @@ gammap_rcp4_2050 <- predict(env_rcp4_2050, gammodel, type = "response")
 gammap_rcp4_2080 <- predict(env_rcp4_2080, gammodel, type = "response")
 gammap_rcp8_2050 <- predict(env_rcp8_2050, gammodel, type = "response")
 gammap_rcp8_2080 <- predict(env_rcp8_2080, gammodel, type = "response")
+
+#mask
+gammap_rcp2_2050 <- raster::mask(gammap_rcp2_2050, study_area)
+gammap_rcp2_2080 <- raster::mask(gammap_rcp2_2080, study_area)
+gammap_rcp4_2050 <- raster::mask(gammap_rcp4_2050, study_area)
+gammap_rcp4_2080 <- raster::mask(gammap_rcp4_2080, study_area)
+gammap_rcp8_2050 <- raster::mask(gammap_rcp8_2050, study_area)
+gammap_rcp8_2080 <- raster::mask(gammap_rcp8_2080, study_area)
+
 
 #plot model results
 plot(gammap_rcp4_2050)
@@ -338,7 +348,7 @@ gam_rcp4_stack <- raster::mask(gam_rcp4_stack, study_area)
 gam_rcp8_stack <- raster::mask(gam_rcp8_stack, study_area)
 
 #write gammaps scenarios (stacked)
-writeRaster(gammap_mask, filename = paste0(gammap_out_folder, "/model_current.tif"), options="INTERLEAVE=BAND", overwrite=T)
+writeRaster(gammap_mask, filename = paste0(gammap_out_folder, "/gam_current.tif"), options="INTERLEAVE=BAND", overwrite=T)
 
 writeRaster(gammap_rcp2_2050, filename = paste0(gammap_out_folder, "/gam_rcp2_2050.tif"), options="INTERLEAVE=BAND", overwrite=T)
 writeRaster(gammap_rcp2_2080, filename = paste0(gammap_out_folder, "/gam_rcp2_2080.tif"), options="INTERLEAVE=BAND", overwrite=T)
@@ -347,15 +357,52 @@ writeRaster(gammap_rcp4_2080, filename = paste0(gammap_out_folder, "/gam_rcp4_20
 writeRaster(gammap_rcp8_2050, filename = paste0(gammap_out_folder, "/gam_rcp8_2050.tif"), options="INTERLEAVE=BAND", overwrite=T)
 writeRaster(gammap_rcp8_2080, filename = paste0(gammap_out_folder, "/gam_rcp8_2080.tif"), options="INTERLEAVE=BAND", overwrite=T)
 
-writeRaster(gam_rcp2_stack, filename = paste0(gammap_out_folder, "/RGB_RCP2_full.tif"), options="INTERLEAVE=BAND", overwrite=T)
-writeRaster(gam_rcp4_stack, filename = paste0(gammap_out_folder, "/RGB_RCP4_full.tif"), options="INTERLEAVE=BAND", overwrite=T)
-writeRaster(gam_rcp8_stack, filename = paste0(gammap_out_folder, "/RGB_RCP8_full.tif"), options="INTERLEAVE=BAND", overwrite=T)
+writeRaster(gam_rcp2_stack, filename = paste0(RGB_out_folder, "/RGB_RCP2_full.tif"), options="INTERLEAVE=BAND", overwrite=T)
+writeRaster(gam_rcp4_stack, filename = paste0(RGB_out_folder, "/RGB_RCP4_full.tif"), options="INTERLEAVE=BAND", overwrite=T)
+writeRaster(gam_rcp8_stack, filename = paste0(RGB_out_folder, "/RGB_RCP8_full.tif"), options="INTERLEAVE=BAND", overwrite=T)
 
 
 ############################################################################################################
 #' ==========================================
 #' defining threshold for data vizualising
 #' ==========================================
+#' 
+#' storing gammap in new variables
+thresh_current <- gammap_mask
+thresh_rcp2_2050 <- gammap_rcp2_2050
+thresh_rcp2_2080 <- gammap_rcp2_2080
+thresh_rcp4_2050 <- gammap_rcp4_2050
+thresh_rcp4_2080 <- gammap_rcp4_2080
+thresh_rcp8_2050 <- gammap_rcp8_2050
+thresh_rcp8_2080 <- gammap_rcp8_2080
+
+#' defing threshold < 0.7 <- NA
+values(thresh_current)[values(thresh_current<=0.01)] <- NA 
+values(thresh_rcp2_2050)[values(thresh_rcp2_2050<=0.01)] <- NA 
+values(thresh_rcp2_2080)[values(thresh_rcp2_2080<=0.01)] <- NA 
+values(thresh_rcp4_2050)[values(thresh_rcp4_2050<=0.01)] <- NA 
+values(thresh_rcp4_2080)[values(thresh_rcp4_2080<=0.01)] <- NA 
+values(thresh_rcp8_2050)[values(thresh_rcp8_2050<=0.01)] <- NA 
+values(thresh_rcp8_2080)[values(thresh_rcp8_2080<=0.01)] <- NA 
+
+#' stack RCPs together
+thres_gam_rcp2_stack <- stack(thresh_current, thresh_rcp2_2050, thresh_rcp2_2080)
+thres_gam_rcp4_stack <- stack(thresh_current, thresh_rcp4_2050, thresh_rcp4_2080)
+thres_gam_rcp8_stack <- stack(thresh_current, thresh_rcp8_2050, thresh_rcp8_2080)
+
+#' write raster
+writeRaster(thres_gam_rcp2_stack, filename = paste0(RGB_out_folder, "/thresh_RCP2_0.tif"), options="INTERLEAVE=BAND", overwrite=T)
+writeRaster(thres_gam_rcp4_stack, filename = paste0(RGB_out_folder, "/thresh_RCP4_0.tif"), options="INTERLEAVE=BAND", overwrite=T)
+writeRaster(thres_gam_rcp8_stack, filename = paste0(RGB_out_folder, "/thresh_RCP8_0.tif"), options="INTERLEAVE=BAND", overwrite=T)
+
+
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' ##############
 #creating binary map with treshold 0.7 -> 70% probability of growing caffea arabica
 class_out_folder <- "D:\\01_Uni\\02_Master\\MET1_Modeling_Prediction\\data\\class"
 binaryMap <- function(raster, threshold) {
@@ -365,7 +412,8 @@ binaryMap <- function(raster, threshold) {
   return(bin)
 }
 
-threshold <- 0.7
+threshold <- 0.01
+
 
 #brick GAM models
 ras_current <- brick(gammap)
@@ -409,9 +457,9 @@ class_rcp4_stack <- raster::mask(class_rcp4_stack, study_area)
 class_rcp8_stack <- raster::mask(class_rcp8_stack, study_area)
 
 #write raster
-writeRaster(class_rcp2_stack, filename = paste0(class_out_folder, "/RGB_RCP2_class.tif"), options="INTERLEAVE=BAND", overwrite=T)
-writeRaster(class_rcp4_stack, filename = paste0(class_out_folder, "/RGB_RCP4_class.tif"), options="INTERLEAVE=BAND", overwrite=T)
-writeRaster(class_rcp8_stack, filename = paste0(class_out_folder, "/RGB_RCP8_class.tif"), options="INTERLEAVE=BAND", overwrite=T)
+writeRaster(class_rcp2_stack, filename = paste0(RGB_out_folder, "/RGB_RCP2_class.tif"), options="INTERLEAVE=BAND", overwrite=T)
+writeRaster(class_rcp4_stack, filename = paste0(RGB_out_folder, "/RGB_RCP4_class.tif"), options="INTERLEAVE=BAND", overwrite=T)
+writeRaster(class_rcp8_stack, filename = paste0(RGB_out_folder, "/RGB_RCP8_class.tif"), options="INTERLEAVE=BAND", overwrite=T)
 
 
 plot(class_rcp2_2050)
@@ -442,17 +490,17 @@ ggRGB(gam_rcp8_stack, r = 1, g = 2, b = 3)+
 
 #-------------------
 #plot of each scenario with threshold 0.7
-ggRGB(class_rcp2_stack, r = 3, g = 2, b = 1)+
+ggRGB(class_rcp2_stack, r = 1, g = 2, b = 3)+
   #xlab("test")+
   ggtitle("Prediction in Caffea Arabica for RCP2, threshold 0.7")+
   theme_void()  # Empty theme without axis lines and texts
 
-ggRGB(class_rcp4_stack, r = 3, g = 2, b = 1)+
+ggRGB(class_rcp4_stack, r = 1, g = 2, b = 3)+
   #xlab("test")+
   ggtitle("Prediction in Caffea Arabica for RCP4, threshold 0.7")+
   theme_void()  # Empty theme without axis lines and texts
 
-ggRGB(class_rcp8_stack, r = 3, g = 2, b = 1)+
+ggRGB(class_rcp8_stack, r = 1, g = 2, b = 3)+
   #xlab("test")+
   ggtitle("Prediction in Caffea Arabica for RCP8, threshold 0.7")+
   theme_void()  # Empty theme without axis lines and texts
@@ -465,8 +513,8 @@ ggRGB(class_rcp8_stack, r = 3, g = 2, b = 1)+
 calc_area <- function(raster, res_x, res_y){
   #define default value for res_x and res_y
   if (missing(res_x) & missing(res_y)){
-    res_x <- 0.92
-    res_y <- 0.92
+    res_x <- 0.008333334
+    res_y <- 0.008333334
   }
   vals <- getValues(raster)
   cells <- sum(vals ==1, na.rm = T)
@@ -474,7 +522,7 @@ calc_area <- function(raster, res_x, res_y){
   return(area)
 }
 
-xres(class_rcp2_2050)
+yres(thresh_rcp2_2050)
 area_current <- calc_area(class_current)
 area_rcp2_2050 <- calc_area(class_rcp2_2050)  #pixel 0.92km
 area_rcp2_2080 <- calc_area(class_rcp2_2080)
@@ -496,12 +544,17 @@ esdm_traindata <- as(traindata, "data.frame")
 esdm_traindata$species <- factor(esdm_traindata$species)
 
 
-ESDM <- ensemble_modelling(algorithms=c('RF', 'GAM', 'ANN', 'MAXENT'), Occurrences = esdm_traindata, Pcol='species', Env = stack_env,
-                           rep = 1, Xcol = 'lon', Ycol = 'lat', method = "pSSDM", verbose = FALSE,
-                           endemism = "WEI")
+ESDM <- ensemble_modelling(algorithms=c('RF', 'GAM', 'ANN'), Occurrences = esdm_traindata, Pcol='species', Env = stack_env,
+                           Xcol = 'lon', Ycol = 'lat', method = "pSSDM", verbose = FALSE,
+                           endemism = "WEI", rep=1)
 
-ESDM <- ensemble_modelling(algorithms=c('RF', 'GAM', 'ANN', 'MAXENT'), Occurrences = esdm_traindata, Pcol='species', Env = stack_env,
+ESDM2 <- ensemble_modelling(algorithms=c('RF', 'GAM', 'ANN'), Occurrences = esdm_traindata, Pcol='species', Env = stack_env,
                            rep = 1, Xcol = 'lon', Ycol = 'lat')
 plot(ESDM)
 plot(study_area, add=T)
 
+
+#TO DO: 
+#welcher threshold? 70%
+#wie mehrere models kombinieren? Fehlermeldung
+#warum bei rcp4 doppelt soviele mögliche Anbauflächen?
