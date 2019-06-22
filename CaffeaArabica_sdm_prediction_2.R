@@ -391,7 +391,7 @@ thres_gam_rcp4_stack <- stack(thresh_current, thresh_rcp4_2050, thresh_rcp4_2080
 thres_gam_rcp8_stack <- stack(thresh_current, thresh_rcp8_2050, thresh_rcp8_2080)
 
 #' write raster
-writeRaster(thres_gam_rcp2_stack, filename = paste0(RGB_out_folder, "/thresh_RCP2_0.tif"), options="INTERLEAVE=BAND", overwrite=T)
+writeRaster(thres_gam_rcp2_stack, filename = paste0(RGB_out_folder, "/thresh_RCP2_1_0.tif"), options="INTERLEAVE=BAND", overwrite=T)
 writeRaster(thres_gam_rcp4_stack, filename = paste0(RGB_out_folder, "/thresh_RCP4_0.tif"), options="INTERLEAVE=BAND", overwrite=T)
 writeRaster(thres_gam_rcp8_stack, filename = paste0(RGB_out_folder, "/thresh_RCP8_0.tif"), options="INTERLEAVE=BAND", overwrite=T)
 
@@ -513,8 +513,8 @@ ggRGB(class_rcp8_stack, r = 1, g = 2, b = 3)+
 calc_area <- function(raster, res_x, res_y){
   #define default value for res_x and res_y
   if (missing(res_x) & missing(res_y)){
-    res_x <- 0.008333334
-    res_y <- 0.008333334
+    res_x <- 0.92
+    res_y <- 0.92
   }
   vals <- getValues(raster)
   cells <- sum(vals ==1, na.rm = T)
