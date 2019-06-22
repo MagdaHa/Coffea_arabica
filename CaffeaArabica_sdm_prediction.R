@@ -346,8 +346,8 @@ plot(study_area, add=T)
 class_out_folder <- "C:\\02_Studium\\02_Master\\02_Semester_2\\MET1_Spatial_modelling_and_prediction\\Caffea_arabica\\data\\ggRGB"
 binaryMap <- function(raster, threshold) {
   bin <- raster
-  bin[raster <= threshold] <- 0
-  bin[raster > threshold] <- 1
+  bin[raster <= threshold] <- NA
+  bin[raster > threshold] <- bin[raster]
   return(bin)
 }
 
@@ -466,14 +466,30 @@ area_rcp8_2080 <- calc_area(class_rcp8_2080)
 # Plot per each scenario
 library(RStoolbox)
 
-#stack_rcp2 <- as.list(class_current, class_rcp2_2050, class_rcp2_2080)
 rcp2_list <- list.files(path="C:\\02_Studium\\02_Master\\02_Semester_2\\MET1_Spatial_modelling_and_prediction\\Caffea_arabica\\data\\ggRGB\\class_rcp2", full.names = T)
-#stack_rcp2 <- raster::stack(system.file(path="C:\\02_Studium\\02_Master\\02_Semester_2\\MET1_Spatial_modelling_and_prediction\\Caffea_arabica\\data\\ggRGB\\class_rcp2"))
 stack_rcp2 <- raster::stack(rcp2_list)
-#stack_rcp2 <- raster::stack(class_current, class_rcp2_2050, class_rcp2_2080)
-plot_rcp2 <- ggRGB(stack_rcp2, r = 3, g = 2, b = 1)
+ggRGB(stack_rcp2, r = 3, g = 2, b = 1, alpha=0.5)+
+  #xlab("test")+
+  ggtitle("Prediction in Caffea Arabica for RCP2")+
+  theme_void()  # Empty theme without axis lines and texts
+ 
+rcp4_list <- list.files(path="C:\\02_Studium\\02_Master\\02_Semester_2\\MET1_Spatial_modelling_and_prediction\\Caffea_arabica\\data\\ggRGB\\class_rcp4", full.names = T)
+stack_rcp4 <- raster::stack(rcp4_list)
+plot_rcp4 <- ggRGB(stack_rcp4, r = 3, g = 2, b = 1)
+plot_rcp4
 
-  
+writeRaster(stack_rcp4, filename="RGB_RCP4.tif", options="INTERLEAVE=BAND")
+
+rcp8_list <- list.files(path="C:\\02_Studium\\02_Master\\02_Semester_2\\MET1_Spatial_modelling_and_prediction\\Caffea_arabica\\data\\ggRGB\\class_rcp8", full.names = T)
+stack_rcp8 <- raster::stack(rcp8_list)
+plot_rcp8 <- ggRGB(stack_rcp8, r = 3, g = 2, b = 1)
+plot_rcp8
+
+gammap_res <- raster::resample(gammap, class_rcp2_2050)
+gam_rcp2_stack <- stack(gammap_res, gammap_rcp2_2050, gammap_rcp2_2080)
+writeRaster(gam_rcp2_stack, filename="RGB_RCP2_full.tif", options="INTERLEAVE=BAND")
+ggRGB(gam_rcp2_stack, r = 3, g = 2, b = 1)
+
 #-------------------------------------------------
 #elevation data
 setwd("D:\\01_Uni\\02_Master\\MET1_Modeling_Prediction")
